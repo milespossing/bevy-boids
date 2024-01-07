@@ -1,5 +1,6 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use rand::{thread_rng, Rng};
+use crate::obsticals::{Obstical, WallStartupResource};
 
 pub struct BevyPlugin {
     n_boids: u32,
@@ -50,35 +51,33 @@ fn rand_vec3(lower: f32, upper: f32) -> Vec3 {
     ])
 }
 
-enum Obstical {
-    Wall { position: Vec3, normal: Vec3 },
-}
 
 #[derive(Resource)]
 struct Obsticals {
     pub obsticals: Vec<Obstical>,
 }
 
-fn basic_2d_obsticals() -> Obsticals {
-    let obsticals: Vec<Obstical> =
-        vec![Obstical::Wall {
-            position: Vec3::from_array([0., 0., 0.]),
-            normal: Vec3::from_array([1., 0., 0.]),
-        }];
-    Obsticals { obsticals }
+fn vec2_to_vec3(v: Vec2) -> Vec3 {
+    Vec3::new(v.x, v.y, 0.)
 }
 
 fn generate_boids(
     state: Res<BevyStartupResource>,
+    extents: Res<WallStartupResource>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    // TODO: This should be somewhere else
     commands.spawn(Camera2dBundle::default());
+    let mut rng = thread_rng();
     for _ in 0..state.n_boids {
-        let pos = rand_vec3(-500., 500.);
+        let pos2: Vec2 = Vec2::new(rng.gen_range(extents.left..extents.right), rng.gen_range(extents.bottom..extents.top));
+        let pos = vec2_to_vec3(pos2);
+        let vel = Vec2::new(rng.gen_range(-50.0..50.0), rng.gen_range(-50.0..50.0));
+
         commands.spawn((
-            Boid { ..default() },
+            Boid { velocity: vec2_to_vec3(vel), ..default() },
             MaterialMesh2dBundle {
                 mesh: meshes.add(shape::Circle::new(5.).into()).into(),
                 material: materials.add(ColorMaterial::from(Color::PURPLE)),
@@ -96,10 +95,10 @@ fn boid_motion(mut query: Query<(&Boid, &mut Transform)>, time: Res<Time>) {
     }
 }
 
-fn obstical_in_view(obstical: &Obstical, boid: &Boid, transform: &Transform) -> bool {
+fn obstical_in_view(position: &Vec3, obstical: &Obstical, boid: &Boid, transform: &Transform) -> bool {
     let closest_point: Vec3 =
         match obstical {
-            Obstical::Wall { position, normal } => {
+            Obstical::Wall { normal } => {
                 let v: Vec3 = transform.translation - *position;
                 let dist = v.dot(*normal);
                 transform.translation - (*normal * dist)
@@ -118,7 +117,6 @@ fn obstical_in_view(obstical: &Obstical, boid: &Boid, transform: &Transform) -> 
 fn obstical_to_avoid_velocity(obstical: &Obstical) -> Vec3 {
     match obstical {
         Obstical::Wall {
-            position: _,
             normal,
         } => normal.clone(),
     }
@@ -132,12 +130,12 @@ fn get_boid_avoid_velocity(obsticals: Vec<&Obstical>) -> Vec3 {
         .sum()
 }
 
-fn boid_avoid_obsticals(obsticals: Res<Obsticals>, mut query: Query<(&mut Boid, &Transform)>) {
-    for (mut boid, transform) in query.iter_mut() {
-        let visible: Vec<&Obstical> = obsticals
-            .obsticals
+fn boid_avoid_obsticals(mut boid_query: Query<(&mut Boid, &Transform)>, obstical_query: Query<(&Obstical, &Transform)>) {
+    for (mut boid, transform) in boid_query.iter_mut() {
+        let visible: Vec<&Obstical> = obstical_query
             .iter()
-            .filter(|&o| obstical_in_view(o, &boid, &transform))
+            .filter(|&(o, t)| obstical_in_view(&t.translation, o, &boid, &transform))
+            .map(|(o, _)| o)
             .collect();
         let avoid_velocity = get_boid_avoid_velocity(visible);
         boid.velocity += avoid_velocity;
@@ -152,7 +150,6 @@ impl Plugin for BevyPlugin {
         app.insert_resource(BevyStartupResource {
             n_boids: self.n_boids,
         });
-        app.insert_resource(basic_2d_obsticals());
         app.add_systems(Startup, generate_boids);
         app.add_systems(FixedUpdate, boid_motion);
         app.add_systems(FixedUpdate, boid_avoid_obsticals);
