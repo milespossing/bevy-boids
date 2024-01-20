@@ -1,17 +1,19 @@
-mod obsticals;
 mod system_utils;
 mod boids;
+mod vec_utils;
 
-use crate::boids::BevyPlugin;
-use crate::obsticals::BasicObsticalPlugin;
+use crate::boids::BevyBoidPlugin;
 use bevy::prelude::*;
+
+// some basic setup here
+fn basic_setup(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
+}
 
 fn main() {
     App::new()
+        .add_systems(Startup, basic_setup)
         .add_plugins(DefaultPlugins)
-        .add_plugins(BasicObsticalPlugin::new(
-            [Vec3::new(-500., -300., 0.), Vec3::new(500., 300., 0.)],
-        ))
-        .add_plugins(BevyPlugin::new(100))
+        .add_plugins(BevyBoidPlugin::new(200, false))
         .run();
 }

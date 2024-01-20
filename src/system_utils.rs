@@ -7,12 +7,3 @@ pub struct ArrowComponent {
     pub color: Color,
 }
 
-pub struct ArrowsPlugin;
-
-pub fn move_arrows(mut lines: ResMut<DebugLines>, arrows: Query<(&ArrowComponent, &Transform)>) {
-    for (arrow, transform) in arrows.iter() {
-        let start = transform.translation;
-        let end = start + arrow.direction;
-        lines.line_colored(start, end, 1., arrow.color);
-    }
-}
