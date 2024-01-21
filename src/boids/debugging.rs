@@ -1,33 +1,49 @@
 use bevy::prelude::*;
 use crate::boids::boid::*;
 
-pub struct BoidDebugPlugin {
+#[derive(Component)]
+pub struct DebugSettings {
     pub draw_radius: bool,
+    pub draw_intent: bool,
+    pub draw_velocity: bool,
 }
 
-impl Plugin for BoidDebugPlugin {
-    fn build(&self, app: &mut App) {
-        println!("Adding debug plugin");
-        if self.draw_radius {
-            app.add_systems(Last, (draw_radius, draw_intent));
+impl Default for DebugSettings {
+    fn default() -> Self {
+        Self {
+            draw_radius: false,
+            draw_intent: false,
+            draw_velocity: false,
         }
     }
 }
 
-fn draw_radius(settings: Res<BoidGlobalSettings>, mut gizmos: Gizmos, boids: Query<&Transform, With<Boid>>) {
-    for transform in boids.iter() {
-        let outer = settings.view_distance;
-        let inner = settings.separation_distance;
+pub struct BoidDebugPlugin;
 
-        gizmos.circle(transform.translation, Vec3::Z, outer, Color::RED);
-        gizmos.circle(transform.translation, Vec3::Z, inner, Color::GREEN);
+
+impl Plugin for BoidDebugPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Last, draw_debug);
     }
 }
 
-fn draw_intent(mut gizmos: Gizmos, boids: Query<(&Transform, &Boid)>) {
+fn draw_debug(settings: Res<BoidGlobalSettings>, mut gizmos: Gizmos, boids: Query<(&Transform, &Boid)>, debug_settings: Query<&DebugSettings>) {
+    let debug = debug_settings.single();
     for (transform, boid) in boids.iter() {
-        let intent = transform.translation + boid.velocity;
-        gizmos.line(transform.translation, intent, Color::BLUE);
+        if debug.draw_radius {
+            let outer = settings.view_distance;
+            let inner = settings.separation_distance;
+
+            gizmos.circle(transform.translation, Vec3::Z, outer, Color::RED);
+            gizmos.circle(transform.translation, Vec3::Z, inner, Color::GREEN);
+        }
+
+        if debug.draw_intent {
+            gizmos.line(transform.translation, transform.translation + boid.intent, Color::BLUE);
+        }
+
+        if debug.draw_velocity {
+            gizmos.line(transform.translation, transform.translation + boid.velocity, Color::YELLOW);
+        }
     }
 }
-

@@ -5,7 +5,7 @@ use crate::boids::boid::{Boid, BoidGlobalSettings};
 
 type BoidWithTrans<'a> = (Entity, &'a Boid, &'a Transform);
 
-#[derive(Resource)]
+#[derive(Component)]
 pub struct FlockingSettings {
     pub separation: f32,
     pub alignment: f32,
@@ -13,18 +13,30 @@ pub struct FlockingSettings {
     pub flocking_strength: f32,
 }
 
+impl Default for FlockingSettings {
+    fn default() -> Self {
+        Self {
+            separation: 0.3,
+            alignment: 0.8,
+            cohesion: 0.2,
+            flocking_strength: 5.0,
+        }
+    }
+}
+
 pub struct Flocking;
 
 impl Plugin for Flocking {
     fn build(&self, app: &mut App) {
-        app.insert_resource(FlockingSettings {
-            separation: 0.3,
-            alignment: 0.8,
-            cohesion: 0.2,
-            flocking_strength: 1.0,
-        });
+        app.add_systems(Startup, initialize_flocking);
         app.add_systems(FixedUpdate, flock);
     }
+}
+
+fn initialize_flocking(mut commands: Commands) {
+    commands.spawn(FlockingSettings {
+        ..default()
+    });
 }
 
 fn in_flock(this_boid: &BoidWithTrans, other_boid: &Vec3, distance: f32) -> bool {
@@ -64,8 +76,9 @@ fn cohesion(this_boid: &BoidWithTrans, neighbours: &Vec<(Vec3, Vec3)>) -> Vec3 {
     direction.normalize()
 }
 
-pub fn flock(settings: Res<FlockingSettings>, boid_settings: Res<BoidGlobalSettings>, mut query: Query<(Entity, &mut Boid, &Transform)>) {
+pub fn flock(settings_query: Query<&FlockingSettings>, boid_settings: Res<BoidGlobalSettings>, mut query: Query<(Entity, &mut Boid, &Transform)>) {
     let all_boids: Vec<(Entity, Vec3, Vec3)> = query.iter().map(|(e, boid, transform)| (e.clone(), boid.velocity, transform.translation)).collect();
+    let settings = settings_query.single();
 
     for (entity, mut boid, transform) in query.iter_mut() {
         let flock: Vec<(Vec3, Vec3)> = all_boids.iter()
@@ -75,14 +88,12 @@ pub fn flock(settings: Res<FlockingSettings>, boid_settings: Res<BoidGlobalSetti
             .collect();
 
         if flock.len() == 0 {
-            boid.intent = boid.velocity;
             continue;
         }
 
         let separation_force = separation(&(entity, &boid, transform), &flock, boid_settings.separation_distance);
         let alignment_force = alignment(&flock);
         let cohesion_force = cohesion(&(entity, &boid, transform) ,&flock);
-        let intent = settings.flocking_strength * (separation_force * settings.separation + alignment_force * settings.alignment + cohesion_force * settings.cohesion);
-        boid.intent = intent;
+        boid.intent += settings.flocking_strength * (separation_force * settings.separation + alignment_force * settings.alignment + cohesion_force * settings.cohesion);
     }
 }

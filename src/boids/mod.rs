@@ -4,13 +4,16 @@ mod basic_motion;
 mod settings;
 mod flocking;
 mod debugging;
+mod fullscreen_plugin;
+mod volume_optimization;
 
-use bevy::{prelude::*};
-use boid::{BoidGlobalSettings};
+use bevy::prelude::*;
 use debugging::BoidDebugPlugin;
 use basic_motion::BasicMotion;
 use crate::boids::setup::Setup;
 use flocking::Flocking;
+use crate::boids::fullscreen_plugin::FullscreenCanvasPlugin;
+use crate::boids::volume_optimization::VolumeOptimizationPlugin;
 
 #[derive(Resource)]
 struct BevyStartupResource {
@@ -18,35 +21,21 @@ struct BevyStartupResource {
     debug: bool,
 }
 
-pub struct BevyBoidPlugin {
-    n_boids: u32,
-    debug: bool,
-}
+pub struct BevyBoidPlugin;
 
 impl BevyBoidPlugin {
-    pub fn new(n_boids: u32, debug: bool) -> Self {
-        Self { n_boids, debug }
+    pub fn new() -> Self {
+        Self
     }
 }
 
 impl Plugin for BevyBoidPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(BevyStartupResource {
-            n_boids: self.n_boids,
-            debug: false,
-        });
-        app.insert_resource(BoidGlobalSettings {
-            turn_speed: 50.,
-            view_distance: 200.,
-            separation_distance: 20.,
-            view_angle: 2.,
-            max_speed: 100.,
-        });
         app.add_plugins(Setup);
         app.add_plugins(Flocking);
         app.add_plugins(BasicMotion);
-        if self.debug {
-            app.add_plugins(BoidDebugPlugin { draw_radius: true });
-        }
+        app.add_plugins(FullscreenCanvasPlugin);
+        app.add_plugins(BoidDebugPlugin);
+        // app.add_plugins(VolumeOptimizationPlugin);
     }
 }

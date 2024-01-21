@@ -1,7 +1,7 @@
 use bevy::math::Vec3;
 use bevy::prelude::{Component, Resource};
 
-#[derive(Resource)]
+#[derive(Resource, Component)]
 pub struct BoidGlobalSettings {
     // more like acceleration max
     pub turn_speed: f32,
