@@ -19,7 +19,7 @@ impl Default for FlockingSettings {
             separation: 0.3,
             alignment: 0.8,
             cohesion: 0.2,
-            flocking_strength: 5.0,
+            flocking_strength: 20.0,
         }
     }
 }

@@ -82,11 +82,11 @@ impl Plugin for Setup {
             debug: false,
         });
         app.insert_resource(BoidGlobalSettings {
-            turn_speed: 50.,
+            turn_speed: 100.,
             view_distance: 50.,
             separation_distance: 30.,
             view_angle: 2.,
-            max_speed: 100.,
+            max_speed: 300.,
         });
         app.add_systems(PreStartup, initialize_simulation);
         app.add_systems(Startup, generate_boids);
